@@ -13,16 +13,23 @@ enum class TestResult
   FAIL
 };
 
+struct Test
+{
+  int start_line_number;
+  std::function<void()> action;
+  TestResult result;
+};
+
 class Session
 {
 public:
-  using Test = std::function<TestResult()>;
-
   static Session& GetInstance();
 
-  void AddTest(const Test&);
+  void AddTest(const Test);
 
   TestResult Run() const;
+
+  void Fail(int line_number);
 
 private:
   std::vector<Test> tests_;
@@ -38,7 +45,7 @@ Session& Session::GetInstance()
   return main_session_;
 }
 
-void Session::AddTest(const Test& test)
+void Session::AddTest(const Test test)
 {
   tests_.push_back(test);
 }
@@ -48,7 +55,9 @@ TestResult Session::Run() const
   auto res = TestResult::SUCCESS;;
   for (const Test& test : tests_)
   {
-    if (test() == TestResult::FAIL)
+    test.action();
+
+    if (test.result == TestResult::FAIL)
     {
       res = TestResult::FAIL;
     }
@@ -57,10 +66,27 @@ TestResult Session::Run() const
   return res;
 }
 
+void Session::Fail(int line_number)
+{
+  // Identify which test this is the result for based on line number.
+  Test* matching_test = &tests_.back();
+  for (std::size_t i = 0; i < tests_.size(); i++)
+  {
+    const Test& test = tests_[i];
+    if (test.start_line_number > line_number && i > 0)
+    {
+      matching_test = &tests_[i - 1];
+      break;
+    }
+  }
+
+  matching_test->result = TestResult::FAIL;
+}
+
 class TestAdder
 {
 public:
-  TestAdder(const Session::Test& test)
+  TestAdder(const Test test)
   {
     Session::GetInstance().AddTest(test);
   }
@@ -74,13 +100,20 @@ int main()
   return static_cast<int>(passage::Session::GetInstance().Run());
 }
 
+// Register the test.
 #define UNIT_TEST(name) \
-  static passage::TestResult name(); \
-  static passage::TestAdder adder_##name(&name); \
-  static passage::TestResult name()
+  static void name(); \
+  static passage::TestAdder adder_##name( \
+    { __LINE__, &name, passage::TestResult::SUCCESS }); \
+  static void name()
 
+// If this assertion fails then update the state of the current test
+// and stop the test here.
 #define REQUIRE(expression) \
   if (!(expression)) \
-    return passage::TestResult::FAIL;
+  { \
+    passage::Session::GetInstance().Fail(__LINE__); \
+    return; \
+  }
 
 #endif // __PASSAGE_H_INCLUDED__

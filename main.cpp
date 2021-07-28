@@ -9,5 +9,5 @@ UNIT_TEST(addition_test)
 {
   REQUIRE(add(1, 1) == 2);
 
-  return passage::TestResult::SUCCESS;
+  REQUIRE(add(1, 2) == 2);
 }
