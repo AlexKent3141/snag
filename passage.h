@@ -2,23 +2,45 @@
 #define __PASSAGE_H_INCLUDED__
 
 #include <functional>
+#include <iostream>
 #include <vector>
+#include <string>
 
 namespace passage
 {
 
 enum class TestResult
 {
-  SUCCESS = 0,
+  PASS = 0,
   FAIL
 };
 
 struct Test
 {
+  std::string name;
   int start_line_number;
   std::function<void()> action;
   TestResult result;
+
+  std::string file_name;
+  int fail_line_number;
+  std::string expression;
 };
+
+std::ostream& operator<<(std::ostream& s, const Test& test)
+{
+  if (test.result == TestResult::PASS)
+  {
+    s << test.name << " Passed" << std::endl;
+  }
+  else
+  {
+    s << test.file_name << ": line " << test.fail_line_number << ": " << test.expression << std::endl;
+    s << test.name << " Failed " << std::endl;
+  }
+
+  return s;
+}
 
 class Session
 {
@@ -29,7 +51,10 @@ public:
 
   TestResult Run() const;
 
-  void Fail(int line_number);
+  void Fail(
+    const std::string& file_name,
+    int line_number,
+    const std::string& expression);
 
 private:
   std::vector<Test> tests_;
@@ -52,10 +77,12 @@ void Session::AddTest(const Test test)
 
 TestResult Session::Run() const
 {
-  auto res = TestResult::SUCCESS;;
+  auto res = TestResult::PASS;;
   for (const Test& test : tests_)
   {
     test.action();
+
+    std::cout << test;
 
     if (test.result == TestResult::FAIL)
     {
@@ -66,7 +93,10 @@ TestResult Session::Run() const
   return res;
 }
 
-void Session::Fail(int line_number)
+void Session::Fail(
+  const std::string& file_name,
+  int line_number,
+  const std::string& expression)
 {
   // Identify which test this is the result for based on line number.
   Test* matching_test = &tests_.back();
@@ -81,6 +111,9 @@ void Session::Fail(int line_number)
   }
 
   matching_test->result = TestResult::FAIL;
+  matching_test->file_name = file_name;
+  matching_test->fail_line_number = line_number;
+  matching_test->expression = expression;
 }
 
 class TestAdder
@@ -104,7 +137,7 @@ int main()
 #define UNIT_TEST(name) \
   static void name(); \
   static passage::TestAdder adder_##name( \
-    { __LINE__, &name, passage::TestResult::SUCCESS }); \
+    { #name, __LINE__, &name }); \
   static void name()
 
 // If this assertion fails then update the state of the current test
@@ -112,7 +145,7 @@ int main()
 #define REQUIRE(expression) \
   if (!(expression)) \
   { \
-    passage::Session::GetInstance().Fail(__LINE__); \
+    passage::Session::GetInstance().Fail(__FILE__, __LINE__, #expression); \
     return; \
   }
 
