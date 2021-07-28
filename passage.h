@@ -35,7 +35,9 @@ std::ostream& operator<<(std::ostream& s, const Test& test)
   }
   else
   {
-    s << test.file_name << ": line " << test.fail_line_number << ": " << test.expression << std::endl;
+    s << test.file_name << ": line "
+      << test.fail_line_number << ": "
+      << test.expression << std::endl;
     s << test.name << " Failed " << std::endl;
   }
 
@@ -47,7 +49,7 @@ class Session
 public:
   static Session& GetInstance();
 
-  void AddTest(const Test);
+  void AddTest(Test&&);
 
   TestResult Run() const;
 
@@ -70,9 +72,9 @@ Session& Session::GetInstance()
   return main_session_;
 }
 
-void Session::AddTest(const Test test)
+void Session::AddTest(Test&& test)
 {
-  tests_.push_back(test);
+  tests_.push_back(std::move(test));
 }
 
 TestResult Session::Run() const
@@ -93,6 +95,7 @@ TestResult Session::Run() const
   return res;
 }
 
+// Find the failed test and decorate it with the failure details.
 void Session::Fail(
   const std::string& file_name,
   int line_number,
@@ -119,9 +122,9 @@ void Session::Fail(
 class TestAdder
 {
 public:
-  TestAdder(const Test test)
+  TestAdder(Test&& test)
   {
-    Session::GetInstance().AddTest(test);
+    Session::GetInstance().AddTest(std::move(test));
   }
 };
 
@@ -136,8 +139,10 @@ int main()
 // Register the test.
 #define UNIT_TEST(name) \
   static void name(); \
-  static passage::TestAdder adder_##name( \
-    { #name, __LINE__, &name }); \
+  namespace \
+  { \
+    passage::TestAdder adder_##name({ #name, __LINE__, &::name }); \
+  } \
   static void name()
 
 // If this assertion fails then update the state of the current test
