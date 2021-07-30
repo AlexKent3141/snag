@@ -1,12 +1,12 @@
-#ifndef __PASSAGE_H_INCLUDED__
-#define __PASSAGE_H_INCLUDED__
+#ifndef __SNAG_H_INCLUDED__
+#define __SNAG_H_INCLUDED__
 
 #include <functional>
 #include <iostream>
 #include <vector>
 #include <string>
 
-namespace passage
+namespace snag
 {
 
 enum class TestResult
@@ -130,10 +130,10 @@ public:
 
 }
 
-// The passage library defines main.
+// The snag library defines main.
 int main()
 {
-  return static_cast<int>(passage::Session::GetInstance().Run());
+  return static_cast<int>(snag::Session::GetInstance().Run());
 }
 
 // Register the test.
@@ -141,7 +141,7 @@ int main()
   static void name(); \
   namespace \
   { \
-    passage::TestAdder adder_##name({ #name, __LINE__, &::name }); \
+    snag::TestAdder adder_##name({ #name, __LINE__, &::name }); \
   } \
   static void name()
 
@@ -150,8 +150,8 @@ int main()
 #define REQUIRE(expression) \
   if (!(expression)) \
   { \
-    passage::Session::GetInstance().Fail(__FILE__, __LINE__, #expression); \
+    snag::Session::GetInstance().Fail(__FILE__, __LINE__, #expression); \
     return; \
   }
 
-#endif // __PASSAGE_H_INCLUDED__
+#endif // __SNAG_H_INCLUDED__

@@ -1,4 +1,4 @@
-#include "passage.h"
+#include "snag.h"
 
 UNIT_TEST(addition_test)
 {
